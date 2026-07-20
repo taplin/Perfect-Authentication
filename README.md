@@ -2,7 +2,15 @@
 
 Swift 6 OAuth2 client library with providers for Google, GitHub, Facebook, Slack, LinkedIn, and Salesforce. No external dependencies — Foundation and URLSession only.
 
-**Resurrection status:** Complete. Original `Perfect-Authentication` (Swift 3, PerfectCURL, PerfectHTTP) rewritten for Swift 6 strict concurrency.
+**Requirements:** swift-tools-version 6.2, macOS 26+ (`platforms: [.macOS(.v26)]` in Package.swift). No iOS/Linux/tvOS/watchOS platform is declared. Both the library and test targets build under `swiftLanguageMode(.v6)` (strict concurrency).
+
+**Resurrection status:** Complete for `PerfectOAuth2` — the only target Package.swift builds. Original `Perfect-Authentication` (Swift 3, PerfectCURL, PerfectHTTP) rewritten for Swift 6 strict concurrency.
+
+**Ecosystem status:** Staged, not yet integrated. This package is standalone infrastructure — a cross-checked grep across `Perfect-Resurrection` confirms no other repo currently depends on it (no `Package.swift` in the ecosystem references `PerfectOAuth2` or `Perfect-Authentication`). It is finished and tested, awaiting a consumer (e.g. a future `PerfectNIOOAuth2` wrapper in Perfect-NIO — see Future work below), not dead or abandoned code.
+
+**Legacy source directories (unbuilt):** `Sources/` contains two directories not referenced by any target in Package.swift, kept for reference only:
+- `Sources/OAuth2/` — the pre-resurrection Swift 3 original (imports `PerfectHTTP`), superseded by `Sources/PerfectOAuth2/`. Note that `OAuth2.swift` exists in both directories; only the one under `Sources/PerfectOAuth2/` is live.
+- `Sources/LocalAuthentication/` — a username/password local-auth system, deliberately left un-resurrected. See Future work below.
 
 ## Package
 
@@ -135,7 +143,7 @@ let userdata = await provider.getUserData(token.accessToken)
 |------------|------------------------------------|-------|
 | Google     | `profile`                          | Add `restrictedDomain` to enforce G Suite domain |
 | GitHub     | `user`                             | Uses `Authorization: Bearer` header (not deprecated query param) |
-| Facebook   | _(none)_                           | Graph API v2.8 |
+| Facebook   | _(none)_                           | Profile fetch on Graph API v2.8; token exchange endpoint is still pinned to the older v2.3 (see Future work) |
 | Slack      | `identity.basic identity.avatar`   | |
 | LinkedIn   | `openid profile`                   | v2 userinfo endpoint (OpenID Connect) |
 | Salesforce | `id`                               | Token exchange returns `idURL`; `getUserData` fetches from that URL |
@@ -165,6 +173,12 @@ do {
 
 - **Salesforce sandbox** — `SalesForce` hardcodes `login.salesforce.com`. Add `SalesForceConfig.domain` to support sandbox (`test.salesforce.com`) or My Domain instances.
 
-- **Facebook Graph API version** — currently pinned to `v2.8`. Facebook's minimum supported version changes over time; bump to a current version (v21+) when updating.
+- **Facebook Graph API version** — the profile-fetch endpoint (`getUserData`) uses `v2.8`, but the token-exchange endpoint (`Facebook.swift`) is still pinned to the older `v2.3`. Facebook's minimum supported version changes over time; bump both to a current version (v21+) when updating.
 
-- **NIO session middleware integration** — the OAuth callback pattern (extract code/state, call processAuthResponse, write to session, redirect) is repetitive. A `PerfectNIOOAuth2` target in Perfect-NIO could provide pre-wired route handlers that accept a session driver and config.
+- **NIO session middleware integration** — the OAuth callback pattern (extract code/state, call processAuthResponse, write to session, redirect) is repetitive. A `PerfectNIOOAuth2` target in Perfect-NIO could provide pre-wired route handlers that accept a session driver and config. This is also the natural point at which this package would move from staged to actively consumed.
+
+- **Orphaned Swift 3 test file** — `Tests/AuthTests/AuthProvidersTests.swift` predates the Swift 6 resurrection (`@testable import AuthProviders`, `static var allTests`), is not referenced by any target in Package.swift, and `swift test` silently ignores it. It contains a hardcoded GitHub `clientID`/`clientSecret` pair inherited from the original Turnstile-derived code — almost certainly a dummy fixture rather than a real credential, but it should be verified and either removed or annotated as such, and the file itself should be deleted or wired into a target.
+
+## License
+
+Apache License 2.0 — see [LICENSE.md](LICENSE.md).
